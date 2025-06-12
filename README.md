@@ -243,12 +243,12 @@ private void collectWords(TrieNode node, StringBuilder current, List<String> out
 
 ---
 
-## Slide 10: `Trie.java` - `generateCandidates` (Penjelasan Lengkap)
+## Slide 10: `Trie.java` - `generateCandidates` (Bagian 1: Inisialisasi & Penggantian)
 
--   **Tujuan:** Mencoba memperbaiki kata salah eja dengan membuat semua variasi kata yang berjarak 1 "edit".
+-   **Tujuan Utama:** Membuat semua kemungkinan kata yang "satu editan" jauhnya dari kata yang salah eja, dan memeriksa apakah hasil editan tersebut ada di kamus `Trie`.
 
-### Blok Inisialisasi
--   **Logika:** Kita menyiapkan 4 `List` terpisah untuk setiap tipe edit. Tujuannya adalah agar nanti kita bisa menggabungkannya sesuai urutan prioritas. Kata input juga langsung diubah ke huruf kecil.
+-   **Langkah 1: Inisialisasi**
+    -   **Logika:** Menyiapkan empat `List` terpisah untuk menampung kandidat dari setiap jenis editan. Ini memungkinkan kita untuk mengontrol urutan prioritas saat menggabungkannya nanti.
     ```java
     List<String> replacements   = new ArrayList<>();
     List<String> transpositions = new ArrayList<>();
@@ -257,12 +257,22 @@ private void collectWords(TrieNode node, StringBuilder current, List<String> out
     String lowerWord = word.toLowerCase();
     ```
 
-### Blok 1: Replacements (Ganti Huruf)
--   **Logika:** Mencoba mengganti setiap karakter di dalam kata dengan semua huruf dari 'a' sampai 'z'.
+-   **Langkah 2: Replacements (Penggantian Karakter)**
+    -   **Loop Luar: `for (int i = 0; i < lowerWord.length(); i++)`**
+        -   **Tujuan:** Iterasi melalui setiap posisi karakter dalam kata. `i` merepresentasikan indeks karakter yang akan diganti.
+    -   **Loop Dalam: `for (char c = 'a'; c <= 'z'; c++)`**
+        -   **Tujuan:** Mencoba mengganti karakter di posisi `i` dengan setiap huruf dalam alfabet.
+    -   **Logika Inti:**
+        1.  Kata diubah menjadi `char[]` agar bisa dimodifikasi.
+        2.  Karakter di `chars[i]` diganti dengan huruf `c`.
+        3.  `char[]` diubah kembali menjadi `String` baru bernama `replaced`.
+        4.  `if (contains(replaced))`: Apakah kata hasil editan ini ada di kamus? Jika ya, tambahkan ke `List replacements`.
+
     ```java
     for (int i = 0; i < lowerWord.length(); i++) {
         char[] chars = lowerWord.toCharArray();
         for (char c = 'a'; c <= 'z'; c++) {
+            if (chars[i] == c) continue; // Skip jika penggantinya sama
             chars[i] = c;
             String replaced = new String(chars);
             if (contains(replaced)) {
@@ -272,11 +282,21 @@ private void collectWords(TrieNode node, StringBuilder current, List<String> out
     }
     ```
 
-### Blok 2: Transpositions (Tukar Posisi Huruf)
--   **Logika:** Menukar posisi dua karakter yang bersebelahan.
+---
+
+## Slide 11: `Trie.java` - `generateCandidates` (Bagian 2: Tipe Edit Lainnya)
+
+-   **Langkah 3: Transpositions (Penukaran Karakter)**
+    -   **Loop: `for (int i = 0; i < lowerWord.length() - 1; i++)`**
+        -   **Tujuan:** Iterasi melalui setiap *pasangan* karakter yang bersebelahan. Loop berhenti di `length - 1` untuk menghindari error.
+    -   **Logika Inti:**
+        1.  Tukar posisi karakter di `chars[i]` dan `chars[i+1]`.
+        2.  Buat `String` baru dari hasil pertukaran.
+        3.  Periksa jika `String` tersebut ada di kamus; jika ya, tambahkan ke `List transpositions`.
     ```java
     for (int i = 0; i < lowerWord.length() - 1; i++) {
         char[] chars = lowerWord.toCharArray();
+        // Tukar posisi
         char tmp = chars[i];
         chars[i] = chars[i+1];
         chars[i+1] = tmp;
@@ -287,10 +307,13 @@ private void collectWords(TrieNode node, StringBuilder current, List<String> out
     }
     ```
 
-### Blok 3: Deletions (Hapus Huruf)
--   **Logika:** Mencoba menghapus satu karakter dari setiap posisi.
+-   **Langkah 4: Deletions (Penghapusan Karakter)**
+    -   **Loop: `for (int i = 0; i < lowerWord.length(); i++)`**
+        -   **Tujuan:** Iterasi melalui setiap posisi karakter untuk mencoba menghapusnya.
+    -   **Logika Inti:** `lowerWord.substring(0, i) + lowerWord.substring(i + 1)` adalah cara efisien untuk membuat string baru yang menghilangkan karakter pada posisi `i`. String hasil "penghapusan" ini kemudian dicek di kamus.
     ```java
     for (int i = 0; i < lowerWord.length(); i++) {
+        // Buat string baru dengan karakter di indeks i dihapus
         String deleted = lowerWord.substring(0, i) + lowerWord.substring(i + 1);
         if (contains(deleted)) {
             deletions.add(deleted);
@@ -298,11 +321,20 @@ private void collectWords(TrieNode node, StringBuilder current, List<String> out
     }
     ```
 
-### Blok 4: Insertions (Sisip Huruf)
--   **Logika:** Mencoba menyisipkan setiap huruf alfabet ke setiap kemungkinan posisi.
+---
+
+## Slide 12: `Trie.java` - `generateCandidates` (Bagian 3: Penyisipan & Penggabungan)
+
+-   **Langkah 5: Insertions (Penyisipan Karakter)**
+    -   **Loop Luar: `for (int i = 0; i <= lowerWord.length(); i++)`**
+        -   **Tujuan:** Iterasi melalui setiap "celah" antar karakter, termasuk di awal (`i=0`) dan di akhir (`i=length`). `i` adalah posisi di mana karakter baru akan disisipkan.
+    -   **Loop Dalam: `for (char c = 'a'; c <= 'z'; c++)`**
+        -   **Tujuan:** Mencoba menyisipkan setiap huruf alfabet ke dalam "celah" yang ditentukan oleh loop luar.
+    -   **Logika Inti:** `new StringBuilder(lowerWord).insert(i, c)` membuat string baru dengan menyisipkan karakter `c` pada posisi `i`.
     ```java
     for (int i = 0; i <= lowerWord.length(); i++) {
         for (char c = 'a'; c <= 'z'; c++) {
+            // Sisipkan char c di posisi i
             String inserted = new StringBuilder(lowerWord).insert(i, c).toString();
             if (contains(inserted)) {
                 insertions.add(inserted);
@@ -311,8 +343,8 @@ private void collectWords(TrieNode node, StringBuilder current, List<String> out
     }
     ```
 
-### Langkah Terakhir: Penggabungan
--   **Logika:** Semua kandidat dari 4 `List` di atas digabungkan menjadi satu `List` akhir sesuai urutan prioritas.
+-   **Langkah Terakhir: Penggabungan**
+    -   **Logika:** Semua `List` terpisah digabungkan menjadi satu `List` akhir. Urutan penggabungan ini menentukan prioritas saran, di mana `insertions` dianggap paling mungkin, diikuti `deletions`, dan seterusnya.
     ```java
     List<String> allCandidates = new ArrayList<>();
     allCandidates.addAll(insertions);
@@ -321,9 +353,10 @@ private void collectWords(TrieNode node, StringBuilder current, List<String> out
     allCandidates.addAll(replacements);
     return allCandidates;
     ```
+
 ---
 
-## Slide 11: `Trie.java` - Metode `loadDictionaryFromCSV`
+## Slide 13: `Trie.java` - Metode `loadDictionaryFromCSV`
 
 ### `public int loadDictionaryFromCSV(String csvPath)`
 -   **Tujuan:** Memuat data kamus dari file `kbbi_v.csv` ke dalam struktur data Trie saat aplikasi pertama kali dijalankan.
@@ -365,7 +398,7 @@ private void collectWords(TrieNode node, StringBuilder current, List<String> out
 
 ---
 
-## Slide 12: `BinarySearchTree.java` - Peran & Masalah Awal
+## Slide 14: `BinarySearchTree.java` - Peran & Masalah Awal
 
 -   **Peran:** Menyimpan frekuensi penggunaan setiap kata untuk personalisasi saran.
 -   **Struktur:** Key-Value, `Key` adalah kata (`String`), `Value` adalah frekuensi (`Integer`).
@@ -376,7 +409,7 @@ private void collectWords(TrieNode node, StringBuilder current, List<String> out
 
 ---
 
-## Slide 13: Penjelasan Kode `insertNode` (Baru vs. Lama)
+## Slide 15: Penjelasan Kode `insertNode` (Baru vs. Lama)
 
 **KODE LAMA**
 ```java
@@ -417,7 +450,7 @@ private BTNode<K,V> insertNode(BTNode<K,V> node, K k, V data) {
 
 ---
 
-## Slide 14: Penjelasan Metode Publik - `insert` & `search`
+## Slide 16: Penjelasan Metode Publik - `insert` & `search`
 
 ### `public void insert(K key, V data)`
 -   **Tujuan:** Ini adalah metode yang dipanggil dari luar (misal, dari `SpellCheckerMain`). Metode ini menyembunyikan kompleksitas rekursi dari pengguna.
@@ -446,7 +479,7 @@ private BTNode<K,V> insertNode(BTNode<K,V> node, K k, V data) {
 
 ---
 
-## Slide 15: Penjelasan `private BTNode<K,V> find(...)`
+## Slide 17: Penjelasan `private BTNode<K,V> find(...)`
 
 Metode `find` adalah "mesin pencari" rekursif dari BST. Ini adalah implementasi klasik dari pencarian biner pada struktur pohon.
 
@@ -483,7 +516,7 @@ private BTNode<K,V> find(BTNode<K,V> node, K k) {
 
 ---
 
-## Slide 16: Mengapa Refactoring BST Penting?
+## Slide 18: Mengapa Refactoring BST Penting?
 
 1.  **Logika Update Menjadi Sederhana:**
     -   **Sebelumnya:** Proses update frekuensi di `SpellCheckerMain` harus: `search` -> `delete` -> `insert`.
@@ -499,146 +532,167 @@ private BTNode<K,V> find(BTNode<K,V> node, K k) {
 
 ---
 
-## Slide 17: `SpellCheckerMain.java` - Alur Utama & Metode `main`
+## Slide 19: `SpellCheckerMain.java` - Metode `main` (Inisialisasi & Loop)
 
--   **Peran:** Bertindak sebagai "otak" atau orkestrator aplikasi. Ia mengelola alur program, menerima input user, dan menggunakan `Trie` serta `BST` untuk menjalankan tugasnya.
--   **Langkah-langkah di `main`:**
-    1.  **Inisialisasi:** Membuat objek `Trie` untuk kamus dan `BinarySearchTree` untuk frekuensi.
-    2.  **Memuat Kamus:** Mengisi `Trie` dengan puluhan ribu kata dari file `kbbi_v.csv`. Ini adalah proses satu kali saat startup.
-    3.  **Loop Interaktif:** Menjalankan `while(true)` loop yang menampilkan menu utama ("Periksa Teks" atau "Keluar").
-    4.  **Pemrosesan Input & Delegasi:** Saat pengguna memilih untuk memeriksa teks, program meminta input, memecahnya menjadi kata-kata, lalu memanggil `processWord()` untuk setiap kata.
-    5.  **Output:** Setelah semua kata diproses, program menampilkan teks asli dan teks yang sudah dikoreksi secara berdampingan.
--   **Kode `main`:**
+-   **Peran:** Metode `main` adalah titik masuk aplikasi. Ia bertanggung jawab untuk setup awal dan menjaga agar program terus berjalan dan siap menerima perintah dari pengguna.
+-   **Kode `main` (Bagian 1 - Inisialisasi):**
     ```java
     public static void main(String[] args) {
-        // 1. Startup & Inisialisasi
+        // 1. Inisialisasi: Membuat objek Trie untuk kamus dan BST untuk frekuensi.
         dictionary = new Trie();
         freqBst = new BinarySearchTree<>();
         
-        // 1.a Load dictionary ke Trie
+        // 2. Memuat Kamus: Mengisi Trie dengan data dari file .csv.
+        //    Ini adalah operasi yang paling memakan waktu saat startup.
         System.out.println("Loading dictionary...");
-        int wordsLoaded = dictionary.loadDictionaryFromCSV("src/com/kbbi_v.csv");
-        System.out.println("Successfully loaded " + wordsLoaded + " words into the dictionary.");
+        dictionary.loadDictionaryFromCSV("src/com/kbbi_v.csv");
+        System.out.println("Successfully loaded words into the dictionary.");
+    // ... loop utama dimulai setelah ini
+    ```
+-   **Kode `main` (Bagian 2 - Loop Utama):**
+    ```java
+    // ... setelah inisialisasi
+    // 3. Loop Tak Terbatas: `while (true)` membuat program terus berjalan
+    //    dan menampilkan menu hingga pengguna secara eksplisit memilih keluar.
+    while (true) {
+        System.out.println("\n=== Spell Checker ===");
+        // ... (kode untuk menampilkan menu)
+        int choice = scanner.nextInt();
+        scanner.nextLine(); // Membersihkan buffer scanner
 
-        // 1.b BST sudah dibuat kosong di atas
-        while (true) {
-            System.out.println("\n=== Spell Checker ===");
-            System.out.println("1. Check text");
-            System.out.println("2. Exit");
-            System.out.print("Choose option: ");
-            int choice = scanner.nextInt();
-            scanner.nextLine();
+        // 4. Kondisi Keluar: `if (choice == 2)` adalah kondisi untuk
+        //    menghentikan loop tak terbatas dan mengakhiri program.
+        if (choice == 2) break;
 
-            if (choice == 2) break;
-            if (choice == 1) {
-                System.out.println("Enter text to check:");
-                String text = scanner.nextLine();
-                
-                String[] words = text.toLowerCase().split("\\s+");
-                String[] correctedWords = new String[words.length];
-                
-                for (int i = 0; i < words.length; i++) {
-                    correctedWords[i] = processWord(words[i]);
-                }
-                
-                System.out.println("\nOriginal text: " + text);
-                System.out.println("Corrected text: " + String.join(" ", correctedWords));
-            }
+        // 5. Kondisi Pengecekan Teks: `if (choice == 1)` menjalankan alur utama
+        //    untuk memeriksa ejaan.
+        if (choice == 1) {
+            // ... (logika pengecekan teks)
         }
-        scanner.close();
+    }
+    scanner.close(); // Menutup scanner setelah loop berakhir.
     }
     ```
 
 ---
 
-## Slide 18: `SpellCheckerMain.java` - Alur `processWord` (Bagian 1)
+## Slide 20: `SpellCheckerMain.java` - Metode `main` (Logika Pengecekan)
 
--   **Tujuan:** Menerima satu kata, memutuskan apakah kata itu valid atau salah eja, dan mengembalikan versi yang benar.
--   **Langkah 1: Filter & Cek Validitas**
-    1.  **Filter Non-Huruf:** Kata yang mengandung karakter selain `a-z` (misal: "123", "halo!") akan langsung dikembalikan tanpa dicek.
-    2.  **Cek Kamus:** Jika kata valid (ada di `Trie`), program akan mencetak status "Valid word", meng-update frekuensi kata tersebut di `BST`, dan mengembalikan kata itu sendiri.
+-   **Penjelasan:** Di dalam `if (choice == 1)`, logika untuk memproses input pengguna dieksekusi.
+-   **Kode:**
+    ```java
+    if (choice == 1) {
+        // a. Menerima input dari pengguna.
+        System.out.println("Enter text to check:");
+        String text = scanner.nextLine();
+        
+        // b. Normalisasi: Mengubah semua menjadi huruf kecil dan memecah
+        //    kalimat menjadi array kata-kata berdasarkan spasi.
+        String[] words = text.toLowerCase().split("\\s+");
+        
+        // c. Persiapan Hasil: Membuat array baru dengan ukuran yang sama
+        //    untuk menyimpan kata-kata yang sudah dikoreksi.
+        String[] correctedWords = new String[words.length];
+        
+        // d. Iterasi Setiap Kata: Loop `for` ini adalah delegator utama.
+        //    Ia akan memanggil `processWord` untuk setiap kata dalam input
+        //    dan menyimpan hasilnya di `correctedWords`.
+        for (int i = 0; i < words.length; i++) {
+            correctedWords[i] = processWord(words[i]);
+        }
+        
+        // e. Tampilkan Hasil Akhir: Setelah loop selesai, semua kata telah
+        //    diproses. `String.join` menggabungkan kembali array menjadi
+        //    kalimat yang utuh.
+        System.out.println("\nOriginal text: " + text);
+        System.out.println("Corrected text: " + String.join(" ", correctedWords));
+    }
+    ```
 
-- **Kode:**
+---
+
+## Slide 21: `SpellCheckerMain.java` - Metode `processWord`
+
+- **Tujuan:** Metode ini adalah pekerja keras yang sebenarnya. Ia menerima satu kata, melakukan semua analisis, dan mengembalikan kata yang benar (baik asli maupun hasil koreksi).
+- **Langkah 1: Filter dan Cek Validitas**
+    - **Kondisi 1: `if (!word.matches("[a-z]+"))`**
+        - **Tujuan:** Menyaring token yang bukan murni kata (mengandung angka, tanda baca, dll).
+        - **Logika:** Jika sebuah "kata" tidak sepenuhnya terdiri dari huruf 'a' sampai 'z', ia langsung dikembalikan tanpa proses lebih lanjut. Ini mencegah program mencoba mencari saran untuk "123" atau "!"
+    - **Kondisi 2: `if (dictionary.contains(word))`**
+        - **Tujuan:** Pengecekan utama di kamus. Ini adalah "happy path".
+        - **Logika:** Jika `Trie` berisi kata tersebut, maka kata itu valid. Program akan memanggil `updateFrequency` untuk personalisasi dan langsung mengembalikan kata itu.
+
+- **Kode (Bagian 1):**
     ```java
     private static String processWord(String word) {
-        // Cek apakah token HANYA terdiri dari huruf a-z.
         if (!word.matches("[a-z]+")) {
             return word;
         }
 
-        System.out.print("Checking '" + word + "': ");
-        
-        // Untuk kata valid
         if (dictionary.contains(word)) {
-            System.out.println("Valid word");
-            // Update frekuensi di BST
+            System.out.println("'" + word + "': Valid word");
             updateFrequency(word);
-            return word; // Kembalikan kata yang valid
+            return word;
         } 
         else {
-            // ... Logika untuk kata salah eja (lanjut ke slide berikutnya)
-            return handleMisspelledWord(word); // Panggilan ke helper, dijelaskan berikutnya
+            // ... Logika untuk kata salah eja
         }
     }
     ```
-    *(Catatan: Kode di atas sedikit disederhanakan untuk presentasi dengan memindahkan logika `else` ke helper `handleMisspelledWord`)*
 
 ---
 
-## Slide 19: `SpellCheckerMain.java` - Alur `processWord` (Bagian 2: Koreksi)
+## Slide 22: `SpellCheckerMain.java` - `processWord` (Logika Koreksi)
 
--   **Langkah 2: Proses Koreksi Kata Salah Eja**
-    1.  **Generate & Sort:** Jika kata tidak ditemukan, `generateCandidates()` dipanggil. Hasilnya langsung di-sortir berdasarkan frekuensi dari `BST` (`getFrequency`).
-    2.  **Tampilkan Saran:** Tampilkan maksimal 3 saran teratas ke pengguna, lengkap dengan informasi frekuensi (`used X times`). Jika tidak ada saran, kembalikan kata asli.
-    3.  **Input Pengguna:** Minta pengguna memilih koreksi atau skip.
-    4.  **Update & Kembalikan:** Jika pengguna memilih koreksi, frekuensi kata yang **terpilih** akan di-update di `BST`, dan kata tersebut dikembalikan. Jika tidak, kata asli dikembalikan.
+- **Langkah 2: Menangani Kata Salah Eja (Blok `else`)**
+    - **Iterasi & Tampilan Kandidat:**
+        - **Kondisi 1: `if (candidates.isEmpty())`**: Jika `Trie` tidak menghasilkan kandidat sama sekali, program memberitahu pengguna dan mengembalikan kata asli yang salah ketik.
+        - **Loop `for`**: Loop ini berjalan untuk menampilkan maksimal 3 kandidat teratas. `Math.min(3, candidates.size())` memastikan loop tidak error jika jumlah kandidat kurang dari 3.
+    - **Interaksi Pengguna:**
+        - **Kondisi 2: `if (choice > 0 && choice <= numSuggestions)`**: Setelah pengguna memasukkan pilihan, kondisi ini memeriksa apakah pilihan itu valid (antara 1 dan jumlah saran yang ditampilkan).
+        - **Logika:** Jika valid, kata yang dipilih diambil dari `List`, frekuensinya di-update, dan kata tersebut dikembalikan. Jika tidak valid (misal, pengguna memilih 0 atau angka lain), kata asli yang salah ketik akan dikembalikan.
 
-- **Kode (Logika di dalam blok `else` atau helper `handleMisspelledWord`):**
+- **Kode (Bagian 2 - Blok `else`):**
     ```java
-    // Blok 'else' dari slide sebelumnya
-    System.out.println("Misspelled word");
+    // ... dari blok 'else'
+    System.out.println("'" + word + "': Misspelled word");
     
     List<String> candidates = dictionary.generateCandidates(word);
-    
-    // Sortir berdasarkan frekuensi, descending
     candidates.sort((a, b) -> getFrequency(b) - getFrequency(a));
 
     if (candidates.isEmpty()) {
-        System.out.println("No suggestions found.");
+        System.out.println(" -> No suggestions found.");
         return word;
     }
 
-    System.out.println("Suggestions:");
+    System.out.println(" -> Suggestions:");
     int numSuggestions = Math.min(3, candidates.size());
     for (int i = 0; i < numSuggestions; i++) {
-        String candidate = candidates.get(i);
-        int freq = getFrequency(candidate);
-        System.out.printf("%d. %s (used %d times)\n", i+1, candidate, freq);
+        System.out.printf("    %d. %s (used %d times)\n", i + 1, candidates.get(i), getFrequency(candidates.get(i)));
     }
 
-    System.out.print("Choose correction (1-" + numSuggestions + ") or 0 to skip: ");
+    System.out.print(" -> Choose correction (1-" + numSuggestions + ") or 0 to skip: ");
     int choice = scanner.nextInt();
     scanner.nextLine();
 
     if (choice > 0 && choice <= numSuggestions) {
-        String selectedWord = candidates.get(choice-1);
+        String selectedWord = candidates.get(choice - 1);
         updateFrequency(selectedWord);
-        System.out.println("Corrected to: " + selectedWord);
         return selectedWord;
     }
     
-    return word; // User memilih untuk skip
+    return word; // User skip atau input tidak valid
     ```
 
 ---
 
-## Slide 20: `SpellCheckerMain.java` - Helpers untuk Personalisasi
+## Slide 23: `SpellCheckerMain.java` - Helpers untuk Personalisasi
 
 -   **Tujuan:** Dua metode ini (`getFrequency` dan `updateFrequency`) membungkus interaksi dengan `BinarySearchTree` agar kode di `processWord` lebih bersih dan aman.
 
 -   **`private static int getFrequency(String word)`**
-    -   **Fungsi:** Mengambil data frekuensi sebuah kata dari BST.
-    -   **Penanganan Null:** Sangat penting. Jika `freqBst.search(word)` mengembalikan `null` (artinya kata belum pernah digunakan), metode ini mengembalikan `0`, bukan `null`. Ini mencegah `NullPointerException` saat menyortir kandidat.
+    -   **Kondisi Penting:** `(freq != null) ? freq : 0;`. Ini adalah ternary operator.
+    -   **Logika:** Ia memeriksa apakah hasil pencarian di BST (`freq`) adalah `null`. Jika **TIDAK** `null`, ia mengembalikan nilai frekuensi itu sendiri. Jika **IYA** `null` (kata belum ada di BST), ia mengembalikan `0`. Ini mencegah `NullPointerException`.
     ```java
     private static int getFrequency(String word) {
         Integer freq = freqBst.search(word);
@@ -647,16 +701,14 @@ private BTNode<K,V> find(BTNode<K,V> node, K k) {
     ```
 
 -   **`private static void updateFrequency(String word)`**
-    -   **Fungsi:** Meng-update (menambah atau menyisipkan) data frekuensi sebuah kata.
-    -   **Koneksi ke Refactoring BST:** Metode ini mengandalkan `insert` dari `BST` yang sudah di-refactor. Ia mencari frekuensi saat ini, lalu memanggil `freqBst.insert(word, newFrequency)`. Karena `insert` kita bisa menangani *update*, kode ini berfungsi untuk kata yang baru maupun yang sudah ada.
+    - **Kondisi `if (currentFreq == null)`**:
+    - **Logika:** Mengecek apakah kata sudah ada di BST. Jika `null` (kata baru), panggil `insert` dengan nilai `1`. Jika tidak `null` (kata sudah ada), panggil `insert` dengan nilai `currentFreq + 1` untuk menimpanya.
     ```java
     private static void updateFrequency(String word) {
         Integer currentFreq = freqBst.search(word);
         if (currentFreq == null) {
-            // Kata baru, masukkan dengan frekuensi 1
             freqBst.insert(word, 1);
         } else {
-            // Kata sudah ada, increment frekuensi
             freqBst.insert(word, currentFreq + 1);
         }
     }
@@ -665,6 +717,6 @@ private BTNode<K,V> find(BTNode<K,V> node, K k) {
 
 ---
 
-## Slide 21: Demo Aplikasi & Kesimpulan
+## Slide 24: Demo Aplikasi & Kesimpulan
 
-*(Sebelumnya Slide 20, berisi rencana demo dan kesimpulan proyek)* 
+*(Sebelumnya Slide 22, berisi rencana demo dan kesimpulan proyek)* 
