@@ -611,82 +611,126 @@ private BTNode<K,V> find(BTNode<K,V> node, K k) {
 
 ---
 
-## Slide 21: `SpellCheckerMain.java` - Metode `processWord`
+## Slide 21: `SpellCheckerMain.java` - `processWord` (Bagian 1: Filter & Jalur Cepat)
 
-- **Tujuan:** Metode ini adalah pekerja keras yang sebenarnya. Ia menerima satu kata, melakukan semua analisis, dan mengembalikan kata yang benar (baik asli maupun hasil koreksi).
-- **Langkah 1: Filter dan Cek Validitas**
-    - **Kondisi 1: `if (!word.matches("[a-z]+"))`**
-        - **Tujuan:** Menyaring token yang bukan murni kata (mengandung angka, tanda baca, dll).
-        - **Logika:** Jika sebuah "kata" tidak sepenuhnya terdiri dari huruf 'a' sampai 'z', ia langsung dikembalikan tanpa proses lebih lanjut. Ini mencegah program mencoba mencari saran untuk "123" atau "!"
-    - **Kondisi 2: `if (dictionary.contains(word))`**
-        - **Tujuan:** Pengecekan utama di kamus. Ini adalah "happy path".
-        - **Logika:** Jika `Trie` berisi kata tersebut, maka kata itu valid. Program akan memanggil `updateFrequency` untuk personalisasi dan langsung mengembalikan kata itu.
+- **Tujuan:** Menerima **satu kata**, menganalisisnya, dan mengembalikan versi yang benar (baik kata asli yang valid, atau koreksi yang dipilih pengguna). Ini adalah inti dari logika pengecekan.
 
-- **Kode (Bagian 1):**
+- **Kode Langkah 1 & 2:**
     ```java
     private static String processWord(String word) {
+        // LANGKAH 1: Filter Input Non-Alfabet
         if (!word.matches("[a-z]+")) {
-            return word;
+            return word; // Kembalikan token seperti "123" atau "!" apa adanya.
         }
 
+        // Dari sini, kita tahu 'word' adalah kata murni alfabetik
+        System.out.print("Checking '" + word + "': ");
+        
+        // LANGKAH 2: Pengecekan di Kamus (Jalur Cepat untuk Kata Valid)
         if (dictionary.contains(word)) {
-            System.out.println("'" + word + "': Valid word");
+            System.out.println("Valid word");
+            // Update frekuensi untuk personalisasi
             updateFrequency(word);
-            return word;
+            return word; // Kembalikan kata asli karena sudah benar.
         } 
         else {
-            // ... Logika untuk kata salah eja
+            // ... Logika untuk kata salah eja (dibahas di slide berikutnya)
         }
     }
     ```
 
+- **Penjelasan Persis:**
+    1.  **`if (!word.matches("[a-z]+"))`**: Ini adalah "penjaga gerbang" (guard clause). Ia menggunakan *regular expression* `[a-z]+` untuk memeriksa apakah `word` **hanya** terdiri dari satu atau lebih huruf `a` sampai `z`. Jika tidak (misal, mengandung angka atau simbol), fungsi ini langsung berhenti dan mengembalikan `word` itu apa adanya. Ini krusial agar program tidak mencoba "mengoreksi" token seperti `123` atau `!`.
+    2.  **`if (dictionary.contains(word))`**: Ini adalah "jalur cepat" untuk kata yang benar. Jika `Trie` menemukan kata tersebut:
+        -   Program mencetak status "Valid word".
+        -   `updateFrequency(word)` dipanggil untuk mencatat penggunaan kata ini, yang akan meningkatkan akurasi saran di masa depan.
+        -   Fungsi segera `return word`, mengembalikan kata asli ke pemanggil (`main`) untuk membangun kalimat akhir.
+
 ---
 
-## Slide 22: `SpellCheckerMain.java` - `processWord` (Logika Koreksi)
+## Slide 22: `SpellCheckerMain.java` - `processWord` (Bagian 2: Logika Kata Salah Eja)
 
-- **Langkah 2: Menangani Kata Salah Eja (Blok `else`)**
-    - **Iterasi & Tampilan Kandidat:**
-        - **Kondisi 1: `if (candidates.isEmpty())`**: Jika `Trie` tidak menghasilkan kandidat sama sekali, program memberitahu pengguna dan mengembalikan kata asli yang salah ketik.
-        - **Loop `for`**: Loop ini berjalan untuk menampilkan maksimal 3 kandidat teratas. `Math.min(3, candidates.size())` memastikan loop tidak error jika jumlah kandidat kurang dari 3.
-    - **Interaksi Pengguna:**
-        - **Kondisi 2: `if (choice > 0 && choice <= numSuggestions)`**: Setelah pengguna memasukkan pilihan, kondisi ini memeriksa apakah pilihan itu valid (antara 1 dan jumlah saran yang ditampilkan).
-        - **Logika:** Jika valid, kata yang dipilih diambil dari `List`, frekuensinya di-update, dan kata tersebut dikembalikan. Jika tidak valid (misal, pengguna memilih 0 atau angka lain), kata asli yang salah ketik akan dikembalikan.
+- **Tujuan:** Ketika sebuah kata tidak ditemukan di kamus (blok `else`), bagian ini bertugas untuk menghasilkan, mengurutkan, dan menampilkan saran koreksi.
 
-- **Kode (Bagian 2 - Blok `else`):**
+- **Kode Langkah 3 & 4:**
     ```java
-    // ... dari blok 'else'
-    System.out.println("'" + word + "': Misspelled word");
-    
-    List<String> candidates = dictionary.generateCandidates(word);
-    candidates.sort((a, b) -> getFrequency(b) - getFrequency(a));
+    else { // <-- Lanjutan dari slide sebelumnya
+        System.out.println("Misspelled word");
+        
+        // LANGKAH 3: Hasilkan Semua Kemungkinan Kandidat
+        List<String> candidates = dictionary.generateCandidates(word);
+        
+        // LANGKAH 4: Urutkan Kandidat Berdasarkan Frekuensi (Personalisasi)
+        candidates.sort((a, b) -> {
+            int freqA = getFrequency(a);
+            int freqB = getFrequency(b);
+            // Urutkan secara descending: frekuensi tertinggi di atas
+            return freqB - freqA; 
+        });
 
+        // ... (Logika menampilkan & memilih dibahas di slide berikutnya)
+    }
+    ```
+
+- **Penjelasan Persis:**
+    1.  **`dictionary.generateCandidates(word)`**: Memanggil metode `Trie` untuk membuat `List` berisi semua kemungkinan koreksi yang valid (ada di kamus) dan hanya berjarak satu editan (sisip, hapus, ganti, tukar).
+    2.  **`candidates.sort(...)`**: Ini adalah jantung dari fitur personalisasi.
+        -   Ia menggunakan *lambda expression* `(a, b) -> ...` untuk mendefinisikan cara pengurutan *custom*.
+        -   Untuk setiap pasang kata (`a` dan `b`) dari `candidates`, ia memanggil `getFrequency()` untuk mengambil frekuensi penggunaan masing-masing dari `freqBst`.
+        -   `return freqB - freqA;` adalah trik untuk mengurutkan secara *descending*. Jika `freqB` lebih besar dari `freqA`, hasilnya positif, dan `b` akan diletakkan *sebelum* `a` di dalam list. Dengan demikian, kata yang paling sering digunakan akan "naik" ke puncak daftar.
+
+---
+
+## Slide 23: `SpellCheckerMain.java` - `processWord` (Bagian 3: Interaksi Pengguna)
+
+- **Tujuan:** Menampilkan saran yang sudah diurutkan kepada pengguna dan memproses pilihan mereka untuk menentukan kata apa yang akan dikembalikan.
+
+- **Kode Langkah 5 & 6:**
+    ```java
+    // ... Lanjutan dari blok else
+    // LANGKAH 5: Tampilkan Saran ke Pengguna
     if (candidates.isEmpty()) {
-        System.out.println(" -> No suggestions found.");
-        return word;
+        System.out.println("No suggestions found.");
+        return word; // Tidak ada saran, kembalikan kata asli yang salah.
     }
 
-    System.out.println(" -> Suggestions:");
+    System.out.println("Suggestions:");
     int numSuggestions = Math.min(3, candidates.size());
     for (int i = 0; i < numSuggestions; i++) {
-        System.out.printf("    %d. %s (used %d times)\n", i + 1, candidates.get(i), getFrequency(candidates.get(i)));
+        String candidate = candidates.get(i);
+        int freq = getFrequency(candidate);
+        System.out.printf("%d. %s (used %d times)\n", i+1, candidate, freq);
     }
 
-    System.out.print(" -> Choose correction (1-" + numSuggestions + ") or 0 to skip: ");
+    // LANGKAH 6: Minta & Proses Pilihan Pengguna
+    System.out.print("Choose correction (1-" + numSuggestions + ") or 0 to skip: ");
     int choice = scanner.nextInt();
     scanner.nextLine();
 
     if (choice > 0 && choice <= numSuggestions) {
-        String selectedWord = candidates.get(choice - 1);
+        String selectedWord = candidates.get(choice-1);
         updateFrequency(selectedWord);
-        return selectedWord;
+        System.out.println("Corrected to: " + selectedWord);
+        return selectedWord; // Kembalikan kata yang dipilih pengguna.
     }
     
-    return word; // User skip atau input tidak valid
+    // Jika pengguna memilih 0 atau input tidak valid
+    return word; // Kembalikan kata asli yang salah.
     ```
+
+- **Penjelasan Persis:**
+    1.  **`if (candidates.isEmpty())`**: Kasus di mana `generateCandidates` tidak menemukan satu pun koreksi yang valid. Program menyerah dan mengembalikan kata asli.
+    2.  **`Math.min(3, candidates.size())`**: Trik untuk memastikan kita hanya menampilkan maksimal 3 saran dan tidak menyebabkan *error* jika jumlah kandidat yang ditemukan kurang dari 3.
+    3.  **`for` loop**: Iterasi untuk mencetak saran teratas. `printf` digunakan untuk memformat output dengan rapi, menampilkan nomor, kata kandidat, dan frekuensi penggunaannya.
+    4.  **`if (choice > 0 && ...)`**: Memvalidasi input pengguna. Jika mereka memilih angka yang valid (misal 1, 2, atau 3):
+        - `candidates.get(choice-1)` mengambil kata yang benar dari list (indeksnya `pilihan - 1`).
+        - `updateFrequency` dipanggil untuk kata yang dipilih.
+        - `return selectedWord` mengembalikan kata yang sudah dikoreksi.
+    5.  **`return word;` (di akhir)**: Ini adalah "catch-all". Jika pengguna memilih `0` untuk melewati, atau memasukkan angka yang tidak valid, fungsi akan mengembalikan kata asli yang salah ketik.
 
 ---
 
-## Slide 23: `SpellCheckerMain.java` - Helpers untuk Personalisasi
+## Slide 24: `SpellCheckerMain.java` - Helpers untuk Personalisasi
 
 -   **Tujuan:** Dua metode ini (`getFrequency` dan `updateFrequency`) membungkus interaksi dengan `BinarySearchTree` agar kode di `processWord` lebih bersih dan aman.
 
@@ -717,6 +761,6 @@ private BTNode<K,V> find(BTNode<K,V> node, K k) {
 
 ---
 
-## Slide 24: Demo Aplikasi & Kesimpulan
+## Slide 25: Demo Aplikasi & Kesimpulan
 
 *(Sebelumnya Slide 22, berisi rencana demo dan kesimpulan proyek)* 
